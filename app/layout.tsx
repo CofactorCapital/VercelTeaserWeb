@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Schibsted_Grotesk, IBM_Plex_Mono } from "next/font/google";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
 const schibsted = Schibsted_Grotesk({
@@ -36,7 +37,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${schibsted.variable} ${plexMono.variable}`}>
-      <body className="font-display antialiased">{children}</body>
+      <body className="font-display antialiased">
+        {children}
+        <SpeedInsights />
+      </body>
     </html>
   );
 }
