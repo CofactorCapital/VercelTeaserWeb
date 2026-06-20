@@ -6,7 +6,10 @@ import { SignupForm } from "./SignupForm";
 
 export function FinalSection() {
   return (
-    <section className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden border-t border-white/5 px-6 py-28 text-center">
+    <section
+      data-snap
+      className="relative flex h-[100svh] w-full flex-col items-center justify-center overflow-hidden border-t border-white/5 px-6 py-20 text-center"
+    >
       <div
         aria-hidden="true"
         className="pointer-events-none absolute left-1/2 top-1/2 h-[55vh] w-[55vh] -translate-x-1/2 -translate-y-1/2 rounded-full bg-vermilion/10 blur-[130px]"
@@ -36,10 +39,14 @@ export function FinalSection() {
           <SignupForm />
         </Reveal>
 
-        <Reveal delay={0.34} className="mt-16">
+        <Reveal delay={0.34} className="mt-14">
           <LogoMark className="h-10 w-10 opacity-80" />
         </Reveal>
       </div>
+
+      <p className="absolute bottom-8 left-1/2 -translate-x-1/2 font-mono text-[10px] uppercase tracking-[0.3em] text-porcelain/30">
+        © {new Date().getFullYear()} Acme Test · Coming Soon
+      </p>
     </section>
   );
 }

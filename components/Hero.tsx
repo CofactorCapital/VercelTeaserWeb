@@ -22,7 +22,8 @@ export function Hero() {
   return (
     <section
       ref={ref}
-      className="bg-grid relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden px-6 text-center"
+      data-snap
+      className="bg-grid relative flex h-[100svh] w-full flex-col items-center justify-center overflow-hidden px-6 text-center"
     >
       {/* radial glow */}
       <div

@@ -12,15 +12,22 @@
 }
 
 html {
-  scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  /* Full-page snap: each section locks into the viewport. */
+  scroll-snap-type: y mandatory;
 }
 
 body {
   background-color: var(--background);
   color: var(--foreground);
   overflow-x: hidden;
+}
+
+/* Each full-screen panel is a snap target; you can't fly past one. */
+[data-snap] {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
 }
 
 /* Subtle grain / vignette layer used across sections */
@@ -42,6 +49,9 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   html {
-    scroll-behavior: auto;
+    scroll-snap-type: none;
+  }
+  [data-snap] {
+    scroll-snap-stop: normal;
   }
 }
