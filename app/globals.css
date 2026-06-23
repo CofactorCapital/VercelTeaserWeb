@@ -22,12 +22,24 @@ body {
   background-color: var(--background);
   color: var(--foreground);
   overflow-x: hidden;
+  /* Shared camera for the whole page — gives every 3D transform real depth. */
+  perspective: 1400px;
+  perspective-origin: 50% 50%;
 }
 
 /* Each full-screen panel is a snap target; you can't fly past one. */
 [data-snap] {
   scroll-snap-align: start;
   scroll-snap-stop: always;
+  /* Let nested elements live in 3D space relative to the body camera. */
+  transform-style: preserve-3d;
+}
+
+/* Anything we tilt/rotate in 3D should keep its depth and hide its back. */
+.gpu-3d {
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
 }
 
 /* Subtle grain / vignette layer used across sections */
