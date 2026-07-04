@@ -2,14 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  easeIn,
-  easeOut,
   motion,
-  useMotionValue,
   useMotionValueEvent,
   useReducedMotion,
   useScroll,
-  useSpring,
   useTransform,
   type Variants,
 } from "framer-motion";
@@ -23,11 +19,15 @@ import { SECTIONS, type Section } from "@/lib/content";
  *
  *   arrival — title/intro assemble as the chapter scrolls in, then the
  *             questions play on a TIMED stagger (not scroll-scrubbed)
- *   scroll  — continuing to scroll runs the stamp beat: the accusation
- *             lands center-screen, then flies into the ledger rail
+ *   scroll  — crossing scroll thresholds TRIGGERS the stamp beat: the
+ *             accusation springs in center-screen, then flies into the
+ *             ledger rail
  *
- * The timed reveal re-arms when the reader scrolls back above the chapter,
- * so revisiting replays it.
+ * The stamp is a state machine (hidden → staged → flown), not a scrubbed
+ * timeline: scroll position picks the state, timed springs play the
+ * transition. That way the beat can never be skipped by scrolling fast —
+ * it simply won't arm until the question reveal has finished, and it
+ * plays in full from wherever the reader is.
  */
 
 const listVariants: Variants = {
@@ -44,23 +44,26 @@ const itemVariants: Variants = {
   },
 };
 
+/** Scroll bands within the pin that select the stamp state. */
+const STAGE_AT = 0.22;
+const FLY_AT = 0.55;
+
+type Zone = "before" | "stage" | "fly";
+
 export function Chapter({ section, index }: { section: Section; index: number }) {
   const ref = useRef<HTMLElement>(null);
   const reduce = useReducedMotion();
   const { mark } = useLedger();
   const { w, h, isMobile } = useViewport();
+
   const [played, setPlayed] = useState(false);
   const [revealDone, setRevealDone] = useState(false);
+  const [zone, setZone] = useState<Zone>("before");
 
   // Pin-phase progress: 0 when the pin engages, 1 when it releases.
   const { scrollYProgress } = useScroll({
     target: ref,
     offset: ["start start", "end end"],
-  });
-  const p = useSpring(scrollYProgress, {
-    stiffness: 140,
-    damping: 26,
-    restDelta: 0.001,
   });
 
   // Approach progress: 0 while below the fold, 1 as the pin engages.
@@ -85,15 +88,25 @@ export function Chapter({ section, index }: { section: Section; index: number })
     }
   });
 
-  // The stamp beat is gated behind the timed reveal: scroll positions it,
-  // but it can't show until the questions have finished landing. If the
-  // reader is already deep in the stamp zone when the reveal completes,
-  // the gate springs open and the stamp fades in where they are.
-  const gateRaw = useMotionValue(0);
-  const gate = useSpring(gateRaw, { stiffness: 120, damping: 22 });
+  // Scroll position selects the stamp zone; state changes trigger timed
+  // animations rather than scrubbing a timeline.
+  useMotionValueEvent(scrollYProgress, "change", (v) => {
+    setZone(v < STAGE_AT ? "before" : v < FLY_AT ? "stage" : "fly");
+  });
+
+  // The stamp only arms once the timed reveal has finished. If the reader
+  // is already past a threshold when it arms, the beat plays from there.
+  const stampState = !revealDone || zone === "before"
+    ? "hidden"
+    : zone === "stage"
+      ? "staged"
+      : "flown";
+  const stampOnStage = stampState !== "hidden";
+
+  // Light the rail chip when the stamp lands; un-light when scrolling back.
   useEffect(() => {
-    gateRaw.set(revealDone ? 1 : 0);
-  }, [revealDone, gateRaw]);
+    mark(index, stampState === "flown");
+  }, [stampState, mark, index]);
 
   // --- arrival: title block assembles as the chapter scrolls in ---
   const metaOpacity = useTransform(pre, [0.45, 0.75], [0, 1]);
@@ -105,46 +118,42 @@ export function Chapter({ section, index }: { section: Section; index: number })
   // --- background ghost index: slow parallax, no acrobatics ---
   const ghostY = useTransform(full, [0, 1], ["16%", "-16%"]);
 
-  // --- stamp beat: content dims while the accusation takes the stage ---
-  // Scroll drives the dim, but the gate keeps it from applying (and keeps
-  // the stamp hidden) until the timed reveal has finished.
-  const contentDim = useTransform(p, [0.28, 0.4], [1, 0.14]);
-  const contentShrink = useTransform(p, [0.28, 0.4], [1, 0.985]);
-  const contentOpacity = useTransform(
-    [contentDim, gate] as const,
-    ([a, g]: number[]) => 1 + (a - 1) * g
-  );
-  const contentScale = useTransform(
-    [contentShrink, gate] as const,
-    ([a, g]: number[]) => 1 + (a - 1) * g
-  );
-
   // Fly target: from the stamp's natural center (viewport center) to this
   // chapter's slot on the ledger rail. Deterministic — no DOM measurement.
   const target = chipTarget(index, SECTIONS.length, w, h, isMobile);
   const dx = target.x - w / 2;
   const dy = target.y - h / 2;
 
-  const stampScrubOpacity = useTransform(
-    p,
-    [0.3, 0.36, 0.66, 0.72],
-    [0, 1, 1, 0]
-  );
-  const stampOpacity = useTransform(
-    [stampScrubOpacity, gate] as const,
-    ([a, g]: number[]) => a * g
-  );
-  const stampScale = useTransform(p, [0.3, 0.42, 0.54, 0.72], [1.6, 1, 1, 0.1]);
-  const stampRotate = useTransform(p, [0.3, 0.42, 0.54, 0.72], [-10, -4, -4, 0]);
-  // Slightly different easings on each axis give the flight a subtle arc.
-  const stampX = useTransform(p, [0.54, 0.72], [0, dx], { ease: easeIn });
-  const stampY = useTransform(p, [0.54, 0.72], [0, dy], { ease: easeOut });
-
-  // Light the rail chip as the stamp arrives; un-light when scrubbing back.
-  useMotionValueEvent(scrollYProgress, "change", (v) => {
-    if (v > 0.64) mark(index, true);
-    else if (v < 0.58) mark(index, false);
-  });
+  const stampVariants: Variants = {
+    hidden: {
+      opacity: 0,
+      scale: 1.6,
+      rotate: -10,
+      x: 0,
+      y: 0,
+      transition: { duration: 0.25 },
+    },
+    staged: {
+      opacity: 1,
+      scale: 1,
+      rotate: -4,
+      x: 0,
+      y: 0,
+      transition: { type: "spring", stiffness: 240, damping: 22 },
+    },
+    flown: {
+      opacity: 0,
+      scale: 0.12,
+      rotate: 0,
+      x: dx,
+      y: dy,
+      transition: {
+        duration: 0.55,
+        ease: "easeInOut",
+        opacity: { duration: 0.55, times: [0, 0.75, 1] },
+      },
+    },
+  };
 
   // Reduced motion: a calm, fully visible static chapter. No pin, no stamp
   // flight — the accusation renders as a plain badge below the questions.
@@ -188,8 +197,13 @@ export function Chapter({ section, index }: { section: Section; index: number })
           {section.index}
         </motion.span>
 
+        {/* Content dims while the stamp holds the stage */}
         <motion.div
-          style={{ opacity: contentOpacity, scale: contentScale }}
+          animate={{
+            opacity: stampOnStage ? 0.14 : 1,
+            scale: stampOnStage ? 0.985 : 1,
+          }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
           className="relative z-10 mx-auto w-full max-w-5xl px-6 md:px-10"
         >
           <motion.div style={{ opacity: metaOpacity }}>
@@ -226,16 +240,12 @@ export function Chapter({ section, index }: { section: Section; index: number })
           </motion.ul>
         </motion.div>
 
-        {/* The accusation stamp — lands center-screen, then flies to the rail */}
+        {/* The accusation stamp — springs in center-screen, then flies to the rail */}
         <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
           <motion.div
-            style={{
-              opacity: stampOpacity,
-              scale: stampScale,
-              rotate: stampRotate,
-              x: stampX,
-              y: stampY,
-            }}
+            variants={stampVariants}
+            initial="hidden"
+            animate={stampState}
             className="border-[3px] border-vermilion/90 bg-obsidian/70 px-6 py-4 text-center backdrop-blur-sm sm:px-10 sm:py-6"
           >
             <span className="block font-mono text-[10px] uppercase tracking-[0.4em] text-vermilion/70">
