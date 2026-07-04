@@ -94,16 +94,50 @@ export function Chapter({ section, index }: { section: Section; index: number })
     setZone(v < STAGE_AT ? "before" : v < FLY_AT ? "stage" : "fly");
   });
 
-  // The stamp only arms once the timed reveal has finished. If the reader
-  // is already past a threshold when it arms, the beat plays from there.
-  const stampState = !revealDone || zone === "before"
+  // The stamp only arms once the timed reveal has finished. Scroll position
+  // picks the TARGET state...
+  const targetState = !revealDone || zone === "before"
     ? "hidden"
     : zone === "stage"
       ? "staged"
       : "flown";
+
+  // ...but the actual state is sequenced: the stamp may never skip the
+  // stage. If the reader outran the timer and is already in the fly zone
+  // when the beat arms, it still lands center-screen, holds for a minimum
+  // dwell, and only then flies to the rail.
+  const [stampState, setStampState] = useState<"hidden" | "staged" | "flown">(
+    "hidden"
+  );
+  const stagedAtRef = useRef(0);
+
+  useEffect(() => {
+    if (stampState === "staged") stagedAtRef.current = Date.now();
+  }, [stampState]);
+
+  useEffect(() => {
+    if (targetState === stampState) return;
+    if (targetState === "flown") {
+      if (stampState === "hidden") {
+        setStampState("staged");
+        return;
+      }
+      // staged -> flown only after the stamp has held the stage briefly
+      const dwell = 900;
+      const remaining = dwell - (Date.now() - stagedAtRef.current);
+      if (remaining <= 0) {
+        setStampState("flown");
+        return;
+      }
+      const t = setTimeout(() => setStampState("flown"), remaining);
+      return () => clearTimeout(t);
+    }
+    setStampState(targetState);
+  }, [targetState, stampState]);
+
   const stampOnStage = stampState !== "hidden";
 
-  // Light the rail chip when the stamp lands; un-light when scrolling back.
+  // Light the rail chip when the stamp takes off; un-light when scrolling back.
   useEffect(() => {
     mark(index, stampState === "flown");
   }, [stampState, mark, index]);
@@ -142,7 +176,8 @@ export function Chapter({ section, index }: { section: Section; index: number })
       transition: { type: "spring", stiffness: 240, damping: 22 },
     },
     flown: {
-      opacity: 0,
+      // Hold visible for most of the flight, fade only on arrival.
+      opacity: [null, 1, 0],
       scale: 0.12,
       rotate: 0,
       x: dx,
