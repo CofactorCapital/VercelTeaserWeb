@@ -1,54 +1,41 @@
 "use client";
 
-import { useRef } from "react";
-import {
-  motion,
-  useReducedMotion,
-  useScroll,
-  useSpring,
-  useTransform,
-  type MotionValue,
-} from "framer-motion";
+import { motion, useReducedMotion, type Variants } from "framer-motion";
 import { LogoMark } from "./Logo";
 import { ScrollCue } from "./ScrollCue";
 import { FAITH_LINES } from "@/lib/content";
 
 /**
- * Pinned opening chapter. The premise is visible immediately; scrolling
- * scrubs the faith lines in one at a time, then lands the setup for the
- * ledger mechanic: "So we wrote down eight questions."
+ * Opening screen. The whole text sequence is TIMED on load — premise first,
+ * then the faith lines stagger in, landing on "So we wrote down eight
+ * questions." Scrolling simply moves on to chapter one.
  */
+
+const sequence: Variants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.35, delayChildren: 1.0 } },
+};
+
+const line: Variants = {
+  hidden: { opacity: 0, y: 24 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { type: "spring", stiffness: 90, damping: 18 },
+  },
+};
+
 export function Hero() {
-  const ref = useRef<HTMLElement>(null);
   const reduce = useReducedMotion();
-
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start start", "end end"],
-  });
-  const p = useSpring(scrollYProgress, {
-    stiffness: 140,
-    damping: 26,
-    restDelta: 0.001,
-  });
-
-  const cueOpacity = useTransform(p, [0, 0.08], [1, 0]);
-  const exitOpacity = useTransform(p, [0.9, 1], [1, 0.35]);
-
-  const wonderOpacity = useTransform(p, [0.6, 0.68], [0, 1]);
-  const wonderY = useTransform(p, [0.6, 0.68], [30, 0]);
-  const eightOpacity = useTransform(p, [0.72, 0.8], [0, 1]);
-  const eightY = useTransform(p, [0.72, 0.8], [30, 0]);
-  const eightScale = useTransform(p, [0.72, 0.82], [1.06, 1]);
 
   if (reduce) {
     return (
       <section className="bg-grid relative flex min-h-[100svh] w-full flex-col items-center justify-center px-6 py-28 text-center">
         <HeroTop />
         <div className="mt-8 space-y-1">
-          {FAITH_LINES.map((line) => (
-            <p key={line} className="font-display text-base text-porcelain/60 sm:text-lg">
-              {line}
+          {FAITH_LINES.map((l) => (
+            <p key={l} className="font-display text-base text-porcelain/70 sm:text-lg">
+              {l}
             </p>
           ))}
         </div>
@@ -63,91 +50,66 @@ export function Hero() {
   }
 
   return (
-    <section ref={ref} className="relative h-[200vh]">
-      <div className="bg-grid sticky top-0 flex h-[100svh] w-full flex-col items-center justify-center overflow-hidden px-6 text-center">
-        {/* static radial glow — no pointer chasing */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute left-1/2 top-1/3 h-[60vh] w-[60vh] -translate-x-1/2 -translate-y-1/2 rounded-full bg-azure/10 blur-[120px]"
-        />
+    <section className="bg-grid relative flex h-[100svh] w-full flex-col items-center justify-center overflow-hidden px-6 text-center">
+      {/* static radial glow — no pointer chasing */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute left-1/2 top-1/3 h-[60vh] w-[60vh] -translate-x-1/2 -translate-y-1/2 rounded-full bg-azure/10 blur-[120px]"
+      />
+
+      <div className="relative z-10 flex max-w-3xl flex-col items-center">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+          className="flex flex-col items-center"
+        >
+          <HeroTop />
+        </motion.div>
 
         <motion.div
-          style={{ opacity: exitOpacity }}
-          className="relative z-10 flex max-w-3xl flex-col items-center"
+          variants={sequence}
+          initial="hidden"
+          animate="visible"
+          className="flex flex-col items-center"
         >
-          {/* One-time entrance on load; everything below is scroll-scrubbed. */}
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-            className="flex flex-col items-center"
-          >
-            <HeroTop />
-          </motion.div>
-
           <div className="mt-8 space-y-1">
-            {FAITH_LINES.map((line, i) => (
-              <FaithLine key={line} p={p} i={i} count={FAITH_LINES.length}>
-                {line}
-              </FaithLine>
+            {FAITH_LINES.map((l) => (
+              <motion.p
+                key={l}
+                variants={line}
+                className="font-display text-base text-porcelain/70 sm:text-lg"
+              >
+                {l}
+              </motion.p>
             ))}
           </div>
 
           <motion.p
-            style={{ opacity: wonderOpacity, y: wonderY }}
+            variants={line}
             className="mt-10 font-display text-lg italic text-porcelain/80"
           >
             We&rsquo;ve always wondered why.
           </motion.p>
 
           <motion.p
-            style={{ opacity: eightOpacity, y: eightY, scale: eightScale }}
+            variants={line}
             className="mt-4 font-display text-xl font-semibold text-porcelain sm:text-2xl"
           >
             So we wrote down <span className="text-azure">eight questions</span>.
           </motion.p>
         </motion.div>
-
-        <motion.div
-          style={{ opacity: cueOpacity }}
-          className="absolute bottom-16 left-1/2 -translate-x-1/2 md:bottom-10"
-        >
-          <ScrollCue label="Scroll" />
-        </motion.div>
       </div>
+
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 3.6, duration: 0.8 }}
+        className="absolute bottom-16 left-1/2 -translate-x-1/2 md:bottom-10"
+      >
+        <ScrollCue label="Scroll" />
+      </motion.div>
     </section>
-  );
-}
-
-function FaithLine({
-  p,
-  i,
-  count,
-  children,
-}: {
-  p: MotionValue<number>;
-  i: number;
-  count: number;
-  children: string;
-}) {
-  const start = 0.1 + i * (0.4 / count);
-  const next = 0.1 + (i + 1) * (0.4 / count);
-  const isLast = i === count - 1;
-
-  const opacity = useTransform(
-    p,
-    isLast ? [start, start + 0.06] : [start, start + 0.06, next, next + 0.06],
-    isLast ? [0, 1] : [0, 1, 1, 0.45]
-  );
-  const y = useTransform(p, [start, start + 0.06], [24, 0]);
-
-  return (
-    <motion.p
-      style={{ opacity, y }}
-      className="font-display text-base text-porcelain/80 sm:text-lg"
-    >
-      {children}
-    </motion.p>
   );
 }
 
