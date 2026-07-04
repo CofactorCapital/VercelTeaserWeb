@@ -1,10 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   easeIn,
   easeOut,
   motion,
+  useMotionValue,
   useMotionValueEvent,
   useReducedMotion,
   useScroll,
@@ -49,6 +50,7 @@ export function Chapter({ section, index }: { section: Section; index: number })
   const { mark } = useLedger();
   const { w, h, isMobile } = useViewport();
   const [played, setPlayed] = useState(false);
+  const [revealDone, setRevealDone] = useState(false);
 
   // Pin-phase progress: 0 when the pin engages, 1 when it releases.
   const { scrollYProgress } = useScroll({
@@ -77,8 +79,21 @@ export function Chapter({ section, index }: { section: Section; index: number })
   // re-arm it once the reader scrolls back above the chapter.
   useMotionValueEvent(pre, "change", (v) => {
     if (v > 0.92) setPlayed(true);
-    else if (v < 0.5) setPlayed(false);
+    else if (v < 0.5) {
+      setPlayed(false);
+      setRevealDone(false);
+    }
   });
+
+  // The stamp beat is gated behind the timed reveal: scroll positions it,
+  // but it can't show until the questions have finished landing. If the
+  // reader is already deep in the stamp zone when the reveal completes,
+  // the gate springs open and the stamp fades in where they are.
+  const gateRaw = useMotionValue(0);
+  const gate = useSpring(gateRaw, { stiffness: 120, damping: 22 });
+  useEffect(() => {
+    gateRaw.set(revealDone ? 1 : 0);
+  }, [revealDone, gateRaw]);
 
   // --- arrival: title block assembles as the chapter scrolls in ---
   const metaOpacity = useTransform(pre, [0.45, 0.75], [0, 1]);
@@ -91,8 +106,18 @@ export function Chapter({ section, index }: { section: Section; index: number })
   const ghostY = useTransform(full, [0, 1], ["16%", "-16%"]);
 
   // --- stamp beat: content dims while the accusation takes the stage ---
-  const contentOpacity = useTransform(p, [0.28, 0.4], [1, 0.14]);
-  const contentScale = useTransform(p, [0.28, 0.4], [1, 0.985]);
+  // Scroll drives the dim, but the gate keeps it from applying (and keeps
+  // the stamp hidden) until the timed reveal has finished.
+  const contentDim = useTransform(p, [0.28, 0.4], [1, 0.14]);
+  const contentShrink = useTransform(p, [0.28, 0.4], [1, 0.985]);
+  const contentOpacity = useTransform(
+    [contentDim, gate] as const,
+    ([a, g]: number[]) => 1 + (a - 1) * g
+  );
+  const contentScale = useTransform(
+    [contentShrink, gate] as const,
+    ([a, g]: number[]) => 1 + (a - 1) * g
+  );
 
   // Fly target: from the stamp's natural center (viewport center) to this
   // chapter's slot on the ledger rail. Deterministic — no DOM measurement.
@@ -100,7 +125,15 @@ export function Chapter({ section, index }: { section: Section; index: number })
   const dx = target.x - w / 2;
   const dy = target.y - h / 2;
 
-  const stampOpacity = useTransform(p, [0.3, 0.36, 0.66, 0.72], [0, 1, 1, 0]);
+  const stampScrubOpacity = useTransform(
+    p,
+    [0.3, 0.36, 0.66, 0.72],
+    [0, 1, 1, 0]
+  );
+  const stampOpacity = useTransform(
+    [stampScrubOpacity, gate] as const,
+    ([a, g]: number[]) => a * g
+  );
   const stampScale = useTransform(p, [0.3, 0.42, 0.54, 0.72], [1.6, 1, 1, 0.1]);
   const stampRotate = useTransform(p, [0.3, 0.42, 0.54, 0.72], [-10, -4, -4, 0]);
   // Slightly different easings on each axis give the flight a subtle arc.
@@ -176,6 +209,9 @@ export function Chapter({ section, index }: { section: Section; index: number })
             variants={listVariants}
             initial="hidden"
             animate={played ? "visible" : "hidden"}
+            onAnimationComplete={(definition) => {
+              if (definition === "visible") setRevealDone(true);
+            }}
             className="mt-8 max-w-3xl space-y-4 border-l border-white/10 pl-6 sm:space-y-5"
           >
             {section.questions.map((q) => (
