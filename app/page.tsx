@@ -3,6 +3,7 @@ import { Hero } from "@/components/Hero";
 import { Chapter } from "@/components/Chapter";
 import { Finale } from "@/components/Finale";
 import { LedgerRail } from "@/components/LedgerRail";
+import { SnapManager } from "@/components/SnapManager";
 import { LedgerProvider } from "@/lib/ledger";
 import { SECTIONS } from "@/lib/content";
 
@@ -26,6 +27,7 @@ export default function Home() {
         ))}
         <Finale />
         <LedgerRail />
+        <SnapManager />
       </main>
     </LedgerProvider>
   );

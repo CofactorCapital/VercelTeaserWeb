@@ -25,7 +25,8 @@ export function LedgerRail() {
   const goTo = (i: number) => {
     const el = document.getElementById(`chapter-${i}`);
     if (!el) return;
-    const top = el.getBoundingClientRect().top + window.scrollY + h * 0.5;
+    // Land exactly on the aligned slide start; the reveal plays from there.
+    const top = el.getBoundingClientRect().top + window.scrollY + 2;
     window.scrollTo({ top, behavior: "smooth" });
   };
 

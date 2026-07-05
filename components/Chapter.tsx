@@ -44,9 +44,16 @@ const itemVariants: Variants = {
   },
 };
 
-/** Scroll bands within the pin that select the stamp state. */
+/**
+ * Scroll bands within the pin that select the stamp state. These are the
+ * BASE thresholds; once the timed reveal finishes, the stage threshold is
+ * re-anchored just past wherever the reader is parked, so the stamp always
+ * waits for fresh scroll input instead of appearing on its own.
+ */
 const STAGE_AT = 0.22;
 const FLY_AT = 0.55;
+/** Extra pin-progress the reader must scroll after the reveal to summon the stamp. */
+const ARM_OFFSET = 0.07;
 
 type Zone = "before" | "stage" | "fly";
 
@@ -78,21 +85,36 @@ export function Chapter({ section, index }: { section: Section; index: number })
     offset: ["start end", "end start"],
   });
 
-  // Fire the timed question reveal when the chapter has essentially arrived;
-  // re-arm it once the reader scrolls back above the chapter.
+  // Pin progress at the moment the reveal finished — the anchor the reader
+  // must scroll past for the stamp beat. Null until the beat is armed.
+  const armPRef = useRef<number | null>(null);
+
+  // Fire the timed question reveal once the slide is properly aligned
+  // (SnapManager guarantees alignment shortly after any partial scroll);
+  // re-arm everything once the reader scrolls back above the chapter.
   useMotionValueEvent(pre, "change", (v) => {
-    if (v > 0.92) setPlayed(true);
+    if (v > 0.98) setPlayed(true);
     else if (v < 0.5) {
       setPlayed(false);
       setRevealDone(false);
+      armPRef.current = null;
     }
   });
 
   // Scroll position selects the stamp zone; state changes trigger timed
-  // animations rather than scrubbing a timeline.
-  useMotionValueEvent(scrollYProgress, "change", (v) => {
-    setZone(v < STAGE_AT ? "before" : v < FLY_AT ? "stage" : "fly");
-  });
+  // animations rather than scrubbing a timeline. After arming, the stage
+  // threshold sits just past the reader's parked position so the stamp
+  // only ever answers a fresh scroll.
+  const applyZone = (v: number) => {
+    const arm = armPRef.current;
+    const stageAt =
+      arm === null
+        ? STAGE_AT
+        : Math.max(STAGE_AT, Math.min(arm + ARM_OFFSET, 0.85));
+    const flyAt = Math.min(Math.max(FLY_AT, stageAt + 0.18), 0.96);
+    setZone(v < stageAt ? "before" : v < flyAt ? "stage" : "fly");
+  };
+  useMotionValueEvent(scrollYProgress, "change", applyZone);
 
   // The stamp only arms once the timed reveal has finished. Scroll position
   // picks the TARGET state...
@@ -259,7 +281,13 @@ export function Chapter({ section, index }: { section: Section; index: number })
             initial="hidden"
             animate={played ? "visible" : "hidden"}
             onAnimationComplete={(definition) => {
-              if (definition === "visible") setRevealDone(true);
+              if (definition === "visible") {
+                // Anchor the stamp beat to wherever the reader is right now,
+                // then re-evaluate the zone so it waits for fresh input.
+                armPRef.current = scrollYProgress.get();
+                setRevealDone(true);
+                applyZone(scrollYProgress.get());
+              }
             }}
             className="mt-8 max-w-3xl space-y-4 border-l border-white/10 pl-6 sm:space-y-5"
           >
