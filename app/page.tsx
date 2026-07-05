@@ -1,48 +1,34 @@
-import { Logo } from "@/components/Logo";
+import { Header } from "@/components/Header";
 import { Hero } from "@/components/Hero";
-import { QuestionSection, type Direction } from "@/components/QuestionSection";
-import { FinalSection } from "@/components/FinalSection";
-import { ScrollProgress } from "@/components/ScrollProgress";
-import { SectionNav } from "@/components/SectionNav";
+import { Chapter } from "@/components/Chapter";
+import { Finale } from "@/components/Finale";
+import { LedgerRail } from "@/components/LedgerRail";
+import { SnapManager } from "@/components/SnapManager";
+import { LedgerProvider } from "@/lib/ledger";
 import { SECTIONS } from "@/lib/content";
 
-// Alternating entrance choreography across the eight panels.
-const DIRECTIONS: Direction[] = [
-  "left",
-  "right",
-  "left",
-  "right",
-  "up",
-  "left",
-  "right",
-  "up",
-];
-
+/**
+ * One continuous scroll story:
+ *
+ *   Hero      — the premise, and the promise of eight questions
+ *   Chapters  — each pins, builds its questions, stamps its accusation
+ *               into the persistent evidence ledger, and hands off
+ *   Finale    — the ledger converges, flips to ANSWERED (redacted),
+ *               and resolves into the signup CTA
+ */
 export default function Home() {
   return (
-    <main className="relative bg-obsidian">
-      <ScrollProgress />
-      <SectionNav count={SECTIONS.length} />
-
-      {/* Minimal fixed header */}
-      <header className="fixed inset-x-0 top-0 z-40 flex items-center justify-between px-6 py-5 md:px-10">
-        <Logo />
-        <span className="hidden font-mono text-[10px] uppercase tracking-[0.32em] text-porcelain/40 sm:block">
-          Est. 2026
-        </span>
-      </header>
-
-      <Hero />
-
-      {SECTIONS.map((section, i) => (
-        <QuestionSection
-          key={section.index}
-          section={section}
-          direction={DIRECTIONS[i % DIRECTIONS.length]}
-        />
-      ))}
-
-      <FinalSection />
-    </main>
+    <LedgerProvider count={SECTIONS.length}>
+      <main className="relative bg-obsidian">
+        <Header />
+        <Hero />
+        {SECTIONS.map((section, i) => (
+          <Chapter key={section.index} section={section} index={i} />
+        ))}
+        <Finale />
+        <LedgerRail />
+        <SnapManager />
+      </main>
+    </LedgerProvider>
   );
 }

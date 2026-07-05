@@ -5,8 +5,10 @@ export type Section = {
   title: string;
   /** Optional short framing line(s) above the questions. */
   intro?: string[];
-  /** The list of probing questions / statements. */
+  /** The probing questions — three per chapter, strongest first. */
   questions: string[];
+  /** The accusation this chapter stamps into the evidence ledger. */
+  keyPhrase: string;
 };
 
 export const SECTIONS: Section[] = [
@@ -15,13 +17,10 @@ export const SECTIONS: Section[] = [
     title: "Black Boxes",
     questions: [
       "Why are investors expected to understand the results, but not the process?",
-      "Why are the most expensive products often the least transparent?",
       "Why do investors receive marketing decks instead of evidence?",
-      "Why are holdings hidden?",
-      "Why are decisions hidden?",
-      "Why are assumptions hidden?",
       "Why is “trust us” still considered acceptable?",
     ],
+    keyPhrase: "Holdings, hidden",
   },
   {
     index: "02",
@@ -30,23 +29,20 @@ export const SECTIONS: Section[] = [
     questions: [
       "What exactly are investors paying for?",
       "Why do so many active portfolios look remarkably similar to the index?",
-      "Why do investors discover benchmark hugging only after years of fees?",
       "If performance follows the market… why not simply own the market?",
     ],
+    keyPhrase: "The index, in disguise",
   },
   {
     index: "03",
     title: "Fees",
-    intro: [
-      "The industry talks endlessly about returns.",
-      "Far less about what investors keep.",
-    ],
+    intro: ["The industry talks endlessly about returns.", "Far less about what investors keep."],
     questions: [
       "Why are fees guaranteed while performance is not?",
-      "Why do incentives often reward asset gathering more than investor outcomes?",
       "How much wealth disappears into fees over decades?",
       "How much value must be created before value is delivered?",
     ],
+    keyPhrase: "Fees, guaranteed",
   },
   {
     index: "04",
@@ -55,9 +51,9 @@ export const SECTIONS: Section[] = [
     questions: [
       "Why are after-tax returns rarely the headline number?",
       "How much performance disappears every year without investors noticing?",
-      "Why are investors forced into tax events they didn’t choose?",
       "How much wealth is lost to unnecessary turnover?",
     ],
+    keyPhrase: "Taxes, ignored",
   },
   {
     index: "05",
@@ -65,23 +61,21 @@ export const SECTIONS: Section[] = [
     intro: ["Investors talk about returns.", "Markets talk about risk."],
     questions: [
       "Why are risks often easier to see after losses than before them?",
-      "What risks are actually inside a portfolio?",
       "What happens when assumptions fail?",
-      "What happens when history stops repeating?",
       "Can investors independently verify the risks they own?",
     ],
+    keyPhrase: "Risk, unseen",
   },
   {
     index: "06",
     title: "Alpha",
     intro: ["Everyone talks about alpha.", "Few agree on what it is."],
     questions: [
-      "How much performance comes from skill?",
-      "How much comes from luck?",
-      "How much comes from leverage?",
-      "How much comes from hidden factor exposure?",
+      "How much performance is skill — and how much is luck?",
+      "How much comes from leverage or hidden factor exposure?",
       "How much survives fees and taxes?",
     ],
+    keyPhrase: "Alpha, unproven",
   },
   {
     index: "07",
@@ -89,10 +83,10 @@ export const SECTIONS: Section[] = [
     intro: ["Most industries are becoming more transparent.", "Why isn’t investing?"],
     questions: [
       "Why is visibility treated as a trade secret?",
-      "Why is verification so uncommon?",
       "Why are investors asked to believe instead of verify?",
       "Why are disclosures written for lawyers instead of investors?",
     ],
+    keyPhrase: "Opacity, by design",
   },
   {
     index: "08",
@@ -100,10 +94,10 @@ export const SECTIONS: Section[] = [
     intro: ["Investors supply the capital.", "Why do they receive so little visibility?"],
     questions: [
       "Shouldn’t investors know what they own?",
-      "Shouldn’t investors understand the risks?",
-      "Shouldn’t investors have access to evidence?",
+      "Shouldn’t investors have access to the evidence?",
       "Shouldn’t investors be able to verify the claims?",
     ],
+    keyPhrase: "Control, withheld",
   },
 ];
 
